@@ -144,14 +144,12 @@ Let me know if you have any questions or need help! 😊
 ---
 
 
-**Author**: [Your Name]  
-**Date**: [Today's Date]  
-**GitHub**: [Link to your repository]  
+ Enjoy watching your AI conquer FrozenLake! 🎮❄️ 
 
 
 ---
 
 
-Enjoy watching your AI conquer FrozenLake! 🎮❄️
+
 
 
