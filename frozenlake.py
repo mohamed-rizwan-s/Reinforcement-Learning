@@ -1,69 +1,80 @@
-import gymnasium as gym
-import numpy as np
-import matplotlib.pyplot as plt
-import pickle
+import gymnasium as gym  # This is the library for the FrozenLake game
+import numpy as np       # This helps us work with numbers and arrays
+import matplotlib.pyplot as plt  # This helps us draw graphs
+import pickle            # This helps us save and load the computer's memory
 
-def run(episodes, is_training=True, render=False):
-
+def play_game(episodes, is_training=True, render=False):
+    # Set up the FrozenLake game
     env = gym.make('FrozenLake-v1', map_name="8x8", is_slippery=True, render_mode='human' if render else None)
 
-    if(is_training):
-        q = np.zeros((env.observation_space.n, env.action_space.n)) # init a 64 x 4 array
+    # If the computer is learning, start with a blank memory
+    if is_training:
+        q = np.zeros((env.observation_space.n, env.action_space.n))  # 64 states x 4 actions
     else:
-        f = open('frozen_lake8x8.pkl', 'rb')
-        q = pickle.load(f)
-        f.close()
+        # If not learning, load the computer's memory from a file
+        with open('frozen_lake8x8.pkl', 'rb') as f:
+            q = pickle.load(f)
 
-    learning_rate_a = 0.9 # alpha or learning rate
-    discount_factor_g = 0.9 # gamma or discount rate. Near 0: more weight/reward placed on immediate state. Near 1: more on future state.
-    epsilon = 1         # 1 = 100% random actions
-    epsilon_decay_rate = 0.0001        # epsilon decay rate. 1/0.0001 = 10,000
-    rng = np.random.default_rng()   # random number generator
+    # Set up learning rules
+    learning_rate = 0.9  # How fast the computer learns
+    discount_factor = 0.9  # How much the computer cares about future rewards
+    epsilon = 1  # How often the computer explores (tries random moves)
+    epsilon_decay = 0.0001  # How quickly the computer stops exploring
+    rng = np.random.default_rng()  # A random number generator
 
-    rewards_per_episode = np.zeros(episodes)
+    # Keep track of rewards (1 if the computer wins, 0 if it loses)
+    rewards = np.zeros(episodes)
 
-    for i in range(episodes):
-        state = env.reset()[0]  # states: 0 to 63, 0=top left corner,63=bottom right corner
-        terminated = False      # True when fall in hole or reached goal
-        truncated = False       # True when actions > 200
+    # Play the game for the number of episodes
+    for episode in range(episodes):
+        state = env.reset()[0]  # Start at the beginning of the game
+        done = False  # The game isn't over yet
 
-        while(not terminated and not truncated):
+        while not done:
+            # Decide what action to take
             if is_training and rng.random() < epsilon:
-                action = env.action_space.sample() # actions: 0=left,1=down,2=right,3=up
+                action = env.action_space.sample()  # Try a random move
             else:
-                action = np.argmax(q[state,:])
+                action = np.argmax(q[state, :])  # Choose the best move from memory
 
-            new_state,reward,terminated,truncated,_ = env.step(action)
+            # Take the action and see what happens
+            new_state, reward, terminated, truncated, _ = env.step(action)
 
+            # If the computer is learning, update its memory
             if is_training:
-                q[state,action] = q[state,action] + learning_rate_a * (
-                    reward + discount_factor_g * np.max(q[new_state,:]) - q[state,action]
+                q[state, action] = q[state, action] + learning_rate * (
+                    reward + discount_factor * np.max(q[new_state, :]) - q[state, action]
                 )
 
-            state = new_state
+            state = new_state  # Move to the new state
+            done = terminated or truncated  # Check if the game is over
 
-        epsilon = max(epsilon - epsilon_decay_rate, 0)
+        # Slowly reduce exploration (epsilon) over time
+        epsilon = max(epsilon - epsilon_decay, 0)
 
-        if(epsilon==0):
-            learning_rate_a = 0.0001
-
+        # If the computer wins, record it
         if reward == 1:
-            rewards_per_episode[i] = 1
+            rewards[episode] = 1
 
+    # Close the game
     env.close()
 
+    # Draw a graph of how well the computer is doing
     sum_rewards = np.zeros(episodes)
     for t in range(episodes):
-        sum_rewards[t] = np.sum(rewards_per_episode[max(0, t-100):(t+1)])
+        sum_rewards[t] = np.sum(rewards[max(0, t-100):(t+1)])
     plt.plot(sum_rewards)
     plt.savefig('frozen_lake8x8.png')
 
+    # Save the computer's memory if it was learning
     if is_training:
-        f = open("frozen_lake8x8.pkl","wb")
-        pickle.dump(q, f)
-        f.close()
+        with open("frozen_lake8x8.pkl", "wb") as f:
+            pickle.dump(q, f)
 
+# Run the game
 if __name__ == '__main__':
-    #run(15000)
+    # Train the computer (uncomment this to train)
+    # play_game(15000)
 
-    run(1, is_training=False, render=True)
+    # Let the computer play using its memory (no training)
+    play_game(1, is_training=False, render=True)
